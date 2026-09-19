@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caixa de Remédios</title>
+<meta name="description" content="Histórico de alarmes da caixa de remédios">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3F6C51">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF7;
+    --surface: #EFF1EA;
+    --ink: #1F2D28;
+    --ink-soft: #5B675F;
+    --safe: #3F6C51;
+    --safe-soft: #E1EBE3;
+    --alert: #B54A3C;
+    --alert-soft: #F5E4E0;
+    --pending: #A98A3C;
+    --pending-soft: #F1EAD8;
+    --line: #DEE1D8;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100%;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+  }
+  header {
+    margin-bottom: 28px;
+  }
+  h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 2rem;
+    line-height: 1.15;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    margin: 0;
+  }
+
+  .status-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    margin: 24px 0;
+    font-size: 0.9rem;
+  }
+  .status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--ink-soft);
+    flex-shrink: 0;
+  }
+  .status-dot.on { background: var(--safe); }
+  .status-dot.off { background: var(--alert); }
+
+  button.enable {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--safe);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-left: auto;
+  }
+
+  .section-title {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 32px 0 14px;
+  }
+
+  .empty {
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    padding: 24px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  ul.history {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+  .entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .entry .mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+    margin-top: 2px;
+  }
+  .entry.taken .mark { background: var(--safe-soft); color: var(--safe); }
+  .entry.missed .mark { background: var(--alert-soft); color: var(--alert); }
+  .entry.pending .mark { background: var(--pending-soft); color: var(--pending); }
+
+  .entry .body { flex: 1; min-width: 0; }
+  .entry .time {
+    font-weight: 500;
+    font-size: 0.95rem;
+  }
+  .entry .detail {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    margin-top: 2px;
+  }
+  .entry .tag {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 100px;
+    white-space: nowrap;
+    align-self: center;
+  }
+  .entry.taken .tag { background: var(--safe-soft); color: var(--safe); }
+  .entry.missed .tag { background: var(--alert-soft); color: var(--alert); }
+  .entry.pending .tag { background: var(--pending-soft); color: var(--pending); }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171B18;
+      --surface: #212620;
+      --ink: #EDEFE9;
+      --ink-soft: #9AA39B;
+      --safe-soft: #223227;
+      --alert-soft: #382420;
+      --pending-soft: #332C1C;
+      --line: #2C312B;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Caixa de remédios</h1>
+      <p class="sub">Histórico de alarmes e confirmações</p>
+    </header>
+
+    <div class="status-banner">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Verificando notificações…</span>
+      <button class="enable" id="enableBtn" style="display:none;">Ativar notificações</button>
+    </div>
+
+    <div class="section-title">Histórico</div>
+    <div id="historyContainer">
+      <p class="empty">Carregando…</p>
+    </div>
+  </div>
+
+  <!-- Firebase (via CDN, compat build funciona bem para protótipos) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+
+  <script>
+    // 1) COLE AQUI a config do seu projeto Firebase (Project settings > General > Your apps)
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_PROJETO.firebaseapp.com",
+      projectId: "SEU_PROJETO",
+      storageBucket: "SEU_PROJETO.appspot.com",
+      messagingSenderId: "SEU_SENDER_ID",
+      appId: "SEU_APP_ID"
+    };
+
+    // 2) COLE AQUI a VAPID key (Project settings > Cloud Messaging > Web configuration)
+    const VAPID_KEY = "SUA_VAPID_KEY";
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const enableBtn = document.getElementById('enableBtn');
+    const historyContainer = document.getElementById('historyContainer');
+
+    function setStatus(state, text) {
+      statusDot.className = 'status-dot ' + state;
+      statusText.textContent = text;
+    }
+
+    async function registerServiceWorkerAndMessaging() {
+      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+        setStatus('off', 'Este navegador não suporta notificações.');
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register('sw.js');
+      await navigator.serviceWorker.ready;
+
+      if (Notification.permission === 'granted') {
+        await subscribeToPush(registration);
+      } else if (Notification.permission === 'denied') {
+        setStatus('off', 'Notificações bloqueadas nas configurações do navegador.');
+      } else {
+        setStatus('off', 'Notificações desativadas.');
+        enableBtn.style.display = 'inline';
+      }
+    }
+
+    async function subscribeToPush(registration) {
+      try {
+        const messaging = firebase.messaging();
+        const token = await messaging.getToken({
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: registration
+        });
+        if (token) {
+          // Salva o token no Firestore para o backend poder mandar push depois
+          await db.collection('dispositivos').doc('caixa-remedio').set({
+            fcm_token: token,
+            atualizado_em: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          setStatus('on', 'Notificações ativadas.');
+          enableBtn.style.display = 'none';
+        }
+      } catch (err) {
+        console.error('Falha ao obter token FCM', err);
+        setStatus('off', 'Não foi possível ativar as notificações.');
+      }
+    }
+
+    enableBtn.addEventListener('click', async () => {
+      const permission = await Notification.requestPermission();
+      const registration = await navigator.serviceWorker.ready;
+      if (permission === 'granted') {
+        await subscribeToPush(registration);
+      } else {
+        setStatus('off', 'Permissão negada.');
+      }
+    });
+
+    // Mensagens recebidas com o site em primeiro plano
+    try {
+      firebase.messaging().onMessage((payload) => {
+        console.log('Notificação recebida em primeiro plano:', payload);
+      });
+    } catch (e) { /* messaging pode não estar disponível em navegadores sem suporte */ }
+
+    // 3) Histórico em tempo real
+    function formatDate(ts) {
+      if (!ts) return '—';
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      return d.toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    const STATUS_LABEL = { taken: 'Tomado', missed: 'Perdido', pending: 'Pendente' };
+    const STATUS_ICON = { taken: '✓', missed: '!', pending: '…' };
+
+    db.collection('alarmes')
+      .orderBy('horario_programado', 'desc')
+      .limit(50)
+      .onSnapshot((snapshot) => {
+        if (snapshot.empty) {
+          historyContainer.innerHTML = '<p class="empty">Nenhum alarme registrado ainda.</p>';
+          return;
+        }
+        const items = [];
+        snapshot.forEach((doc) => {
+          const d = doc.data();
+          const status = d.status || 'pending';
+          items.push(`
+            <li class="entry ${status}">
+              <span class="mark">${STATUS_ICON[status] || '?'}</span>
+              <div class="body">
+                <div class="time">${formatDate(d.horario_programado)}</div>
+                <div class="detail">${status === 'taken' ? 'Confirmado às ' + formatDate(d.horario_confirmacao) : status === 'missed' ? 'Alarme não confirmado' : 'Aguardando confirmação'}</div>
+              </div>
+              <span class="tag">${STATUS_LABEL[status] || status}</span>
+            </li>
+          `);
+        });
+        historyContainer.innerHTML = `<ul class="history">${items.join('')}</ul>`;
+      }, (err) => {
+        console.error(err);
+        historyContainer.innerHTML = '<p class="empty">Erro ao carregar histórico.</p>';
+      });
+
+    registerServiceWorkerAndMessaging();
+  </script>
+</body>
+</html>
