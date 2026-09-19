@@ -4,14 +4,14 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
-// Cole a MESMA config usada no index.html
+// Mesma config usada no index.html
 firebase.initializeApp({
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyBJTHw5vQuZ4Xc2zUELtl9OPUDdp_ukxMQ",
+  authDomain: "pillguard-adeec.firebaseapp.com",
+  projectId: "pillguard-adeec",
+  storageBucket: "pillguard-adeec.firebasestorage.app",
+  messagingSenderId: "535386021906",
+  appId: "1:535386021906:web:d31e3e67cdbb1d6d1b38cb"
 });
 
 const messaging = firebase.messaging();
