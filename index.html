@@ -7,6 +7,7 @@
 <meta name="description" content="Histórico de alarmes da caixa de remédios">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3F6C51">
+<meta name="color-scheme" content="light">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -160,18 +161,6 @@
   .entry.missed .tag { background: var(--alert-soft); color: var(--alert); }
   .entry.pending .tag { background: var(--pending-soft); color: var(--pending); }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #171B18;
-      --surface: #212620;
-      --ink: #EDEFE9;
-      --ink-soft: #9AA39B;
-      --safe-soft: #223227;
-      --alert-soft: #382420;
-      --pending-soft: #332C1C;
-      --line: #2C312B;
-    }
-  }
 </style>
 </head>
 <body>
@@ -216,34 +205,38 @@
       return d.toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
-    const STATUS_LABEL = { taken: 'Tomado', missed: 'Perdido', pending: 'Pendente' };
-    const STATUS_ICON = { taken: '✓', missed: '!', pending: '…' };
+    const STATUS_LABEL = { taken: 'Tomado', missed: 'Perdido' };
+    const STATUS_ICON = { taken: '✓', missed: '!' };
 
     // Dados de exemplo, incluindo alarmes perdidos.
+    // Só entram aqui alarmes cujo horário já passou — por isso só existe
+    // "taken" ou "missed", nunca um estado intermediário.
     const mockHistory = [
-      { horario_programado: '2026-09-23T08:00:00', horario_confirmacao: '2026-09-23T08:04:00', status: 'taken' },
+      { horario_programado: '2026-09-24T08:00:00', horario_confirmacao: '2026-09-24T08:05:00', status: 'taken' },
+      { horario_programado: '2026-09-23T20:00:00', horario_confirmacao: null, status: 'missed' },
       { horario_programado: '2026-09-23T13:00:00', horario_confirmacao: null, status: 'missed' },
-      { horario_programado: '2026-09-23T20:00:00', horario_confirmacao: null, status: 'pending' },
-      { horario_programado: '2026-09-22T08:00:00', horario_confirmacao: '2026-09-22T08:11:00', status: 'taken' },
-      { horario_programado: '2026-09-22T13:00:00', horario_confirmacao: '2026-09-22T13:02:00', status: 'taken' },
+      { horario_programado: '2026-09-23T08:00:00', horario_confirmacao: '2026-09-23T08:04:00', status: 'taken' },
       { horario_programado: '2026-09-22T20:00:00', horario_confirmacao: null, status: 'missed' },
-      { horario_programado: '2026-09-21T08:00:00', horario_confirmacao: '2026-09-21T08:06:00', status: 'taken' },
-      { horario_programado: '2026-09-21T13:00:00', horario_confirmacao: null, status: 'missed' },
+      { horario_programado: '2026-09-22T13:00:00', horario_confirmacao: '2026-09-22T13:02:00', status: 'taken' },
+      { horario_programado: '2026-09-22T08:00:00', horario_confirmacao: '2026-09-22T08:11:00', status: 'taken' },
       { horario_programado: '2026-09-21T20:00:00', horario_confirmacao: '2026-09-21T20:03:00', status: 'taken' },
+      { horario_programado: '2026-09-21T13:00:00', horario_confirmacao: null, status: 'missed' },
+      { horario_programado: '2026-09-21T08:00:00', horario_confirmacao: '2026-09-21T08:06:00', status: 'taken' },
     ];
 
     function renderHistory(lista) {
-      if (!lista.length) {
+      const ordenada = [...lista].sort(
+        (a, b) => new Date(b.horario_programado) - new Date(a.horario_programado)
+      );
+      if (!ordenada.length) {
         historyContainer.innerHTML = '<p class="empty">Nenhum alarme registrado ainda.</p>';
         return;
       }
-      const items = lista.map((d) => {
-        const status = d.status || 'pending';
+      const items = ordenada.map((d) => {
+        const status = d.status;
         const detail = status === 'taken'
           ? 'Confirmado às ' + formatDate(d.horario_confirmacao)
-          : status === 'missed'
-            ? 'Alarme não confirmado'
-            : 'Aguardando confirmação';
+          : 'Alarme não confirmado';
         return `
           <li class="entry ${status}">
             <span class="mark">${STATUS_ICON[status] || '?'}</span>
