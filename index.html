@@ -193,136 +193,72 @@
     </div>
   </div>
 
-  <!-- Firebase (via CDN, compat build funciona bem para protótipos) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
-
   <script>
-    // 1) Config do projeto Firebase (Project settings > General > Your apps)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBJTHw5vQuZ4Xc2zUELtl9OPUDdp_ukxMQ",
-      authDomain: "pillguard-adeec.firebaseapp.com",
-      projectId: "pillguard-adeec",
-      storageBucket: "pillguard-adeec.firebasestorage.app",
-      messagingSenderId: "535386021906",
-      appId: "1:535386021906:web:d31e3e67cdbb1d6d1b38cb"
-    };
-
-    // 2) VAPID key (Project settings > Cloud Messaging > Web configuration)
-    const VAPID_KEY = "BPcIT1O0IzlMdUI1nrgGRutuun01pGC4w5QcKd1sqdWlSHbZT0n1HUm5Yk-psYNQ0eHBjT5_pDI18fX9YOgyYsE";
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    // ----------------------------------------------------------------
+    // VERSÃO DE DEMONSTRAÇÃO — sem backend conectado.
+    // O histórico abaixo é fixo, só para mostrar a interface.
+    // Quando for conectar ao Firebase de verdade, troque este bloco
+    // pelo código com firebase-firestore-compat.js (ver versão anterior).
+    // ----------------------------------------------------------------
 
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
     const enableBtn = document.getElementById('enableBtn');
     const historyContainer = document.getElementById('historyContainer');
 
-    function setStatus(state, text) {
-      statusDot.className = 'status-dot ' + state;
-      statusText.textContent = text;
-    }
+    statusDot.className = 'status-dot off';
+    statusText.textContent = 'Modo demonstração — backend não conectado.';
+    enableBtn.style.display = 'none';
 
-    async function registerServiceWorkerAndMessaging() {
-      if (!('serviceWorker' in navigator) || !('Notification' in window)) {
-        setStatus('off', 'Este navegador não suporta notificações.');
-        return;
-      }
-
-      const registration = await navigator.serviceWorker.register('sw.js');
-      await navigator.serviceWorker.ready;
-
-      if (Notification.permission === 'granted') {
-        await subscribeToPush(registration);
-      } else if (Notification.permission === 'denied') {
-        setStatus('off', 'Notificações bloqueadas nas configurações do navegador.');
-      } else {
-        setStatus('off', 'Notificações desativadas.');
-        enableBtn.style.display = 'inline';
-      }
-    }
-
-    async function subscribeToPush(registration) {
-      try {
-        const messaging = firebase.messaging();
-        const token = await messaging.getToken({
-          vapidKey: VAPID_KEY,
-          serviceWorkerRegistration: registration
-        });
-        if (token) {
-          // Salva o token no Firestore para o backend poder mandar push depois
-          await db.collection('dispositivos').doc('caixa-remedio').set({
-            fcm_token: token,
-            atualizado_em: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-          setStatus('on', 'Notificações ativadas.');
-          enableBtn.style.display = 'none';
-        }
-      } catch (err) {
-        console.error('Falha ao obter token FCM', err);
-        setStatus('off', 'Não foi possível ativar as notificações.');
-      }
-    }
-
-    enableBtn.addEventListener('click', async () => {
-      const permission = await Notification.requestPermission();
-      const registration = await navigator.serviceWorker.ready;
-      if (permission === 'granted') {
-        await subscribeToPush(registration);
-      } else {
-        setStatus('off', 'Permissão negada.');
-      }
-    });
-
-    // Mensagens recebidas com o site em primeiro plano
-    try {
-      firebase.messaging().onMessage((payload) => {
-        console.log('Notificação recebida em primeiro plano:', payload);
-      });
-    } catch (e) { /* messaging pode não estar disponível em navegadores sem suporte */ }
-
-    // 3) Histórico em tempo real
-    function formatDate(ts) {
-      if (!ts) return '—';
-      const d = ts.toDate ? ts.toDate() : new Date(ts);
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
       return d.toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
     const STATUS_LABEL = { taken: 'Tomado', missed: 'Perdido', pending: 'Pendente' };
     const STATUS_ICON = { taken: '✓', missed: '!', pending: '…' };
 
-    db.collection('alarmes')
-      .orderBy('horario_programado', 'desc')
-      .limit(50)
-      .onSnapshot((snapshot) => {
-        if (snapshot.empty) {
-          historyContainer.innerHTML = '<p class="empty">Nenhum alarme registrado ainda.</p>';
-          return;
-        }
-        const items = [];
-        snapshot.forEach((doc) => {
-          const d = doc.data();
-          const status = d.status || 'pending';
-          items.push(`
-            <li class="entry ${status}">
-              <span class="mark">${STATUS_ICON[status] || '?'}</span>
-              <div class="body">
-                <div class="time">${formatDate(d.horario_programado)}</div>
-                <div class="detail">${status === 'taken' ? 'Confirmado às ' + formatDate(d.horario_confirmacao) : status === 'missed' ? 'Alarme não confirmado' : 'Aguardando confirmação'}</div>
-              </div>
-              <span class="tag">${STATUS_LABEL[status] || status}</span>
-            </li>
-          `);
-        });
-        historyContainer.innerHTML = `<ul class="history">${items.join('')}</ul>`;
-      }, (err) => {
-        console.error(err);
-        historyContainer.innerHTML = '<p class="empty">Erro ao carregar histórico.</p>';
-      });
+    // Dados de exemplo, incluindo alarmes perdidos.
+    const mockHistory = [
+      { horario_programado: '2026-09-23T08:00:00', horario_confirmacao: '2026-09-23T08:04:00', status: 'taken' },
+      { horario_programado: '2026-09-23T13:00:00', horario_confirmacao: null, status: 'missed' },
+      { horario_programado: '2026-09-23T20:00:00', horario_confirmacao: null, status: 'pending' },
+      { horario_programado: '2026-09-22T08:00:00', horario_confirmacao: '2026-09-22T08:11:00', status: 'taken' },
+      { horario_programado: '2026-09-22T13:00:00', horario_confirmacao: '2026-09-22T13:02:00', status: 'taken' },
+      { horario_programado: '2026-09-22T20:00:00', horario_confirmacao: null, status: 'missed' },
+      { horario_programado: '2026-09-21T08:00:00', horario_confirmacao: '2026-09-21T08:06:00', status: 'taken' },
+      { horario_programado: '2026-09-21T13:00:00', horario_confirmacao: null, status: 'missed' },
+      { horario_programado: '2026-09-21T20:00:00', horario_confirmacao: '2026-09-21T20:03:00', status: 'taken' },
+    ];
 
-    registerServiceWorkerAndMessaging();
+    function renderHistory(lista) {
+      if (!lista.length) {
+        historyContainer.innerHTML = '<p class="empty">Nenhum alarme registrado ainda.</p>';
+        return;
+      }
+      const items = lista.map((d) => {
+        const status = d.status || 'pending';
+        const detail = status === 'taken'
+          ? 'Confirmado às ' + formatDate(d.horario_confirmacao)
+          : status === 'missed'
+            ? 'Alarme não confirmado'
+            : 'Aguardando confirmação';
+        return `
+          <li class="entry ${status}">
+            <span class="mark">${STATUS_ICON[status] || '?'}</span>
+            <div class="body">
+              <div class="time">${formatDate(d.horario_programado)}</div>
+              <div class="detail">${detail}</div>
+            </div>
+            <span class="tag">${STATUS_LABEL[status] || status}</span>
+          </li>
+        `;
+      });
+      historyContainer.innerHTML = `<ul class="history">${items.join('')}</ul>`;
+    }
+
+    renderHistory(mockHistory);
   </script>
 </body>
 </html>
